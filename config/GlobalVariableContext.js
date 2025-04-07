@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const DeviceVariables = {
   'Instagram Icon': 'Icon',
-  __env__: 'Production',
+  __env__: 'Development',
 };
 export const AppVariables = {};
 const GlobalVariableContext = React.createContext();
