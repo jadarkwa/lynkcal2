@@ -31,7 +31,7 @@ const Phase1Screen2Screen = props => {
   const [endTime, setEndTime] = React.useState('');
   
   // Duration selection
-  const [selectedDuration, setSelectedDuration] = React.useState('3 HRS');
+  const [selectedDuration, setSelectedDuration] = React.useState('');
   
   // Calendar grid state
   const [availability, setAvailability] = useState({});
@@ -63,10 +63,12 @@ const Phase1Screen2Screen = props => {
   
   // Create 24-hour time options
   const timeOptions = [
-    "12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM", 
-    "6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", 
-    "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", 
-    "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM", "11:00 PM"
+    "12:00 AM", "12:30 AM", "1:00 AM", "1:30 AM", "2:00 AM", "2:30 AM", "3:00 AM", "3:30 AM", 
+    "4:00 AM", "4:30 AM", "5:00 AM", "5:30 AM", "6:00 AM", "6:30 AM", "7:00 AM", "7:30 AM", 
+    "8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", 
+    "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", 
+    "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", 
+    "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM"
   ];
   
   // Create time options for picker
@@ -94,13 +96,18 @@ const Phase1Screen2Screen = props => {
     }
   };
   
-  // 24 HRS display for grid
-  const timeSlots = [
-    "12AM", "1AM", "2AM", "3AM", "4AM", "5AM", 
-    "6AM","7AM", "8AM", "9AM", "10AM", "11AM", 
-    "12PM", "1PM","2PM", "3PM", "4PM", "5PM", 
-    "6PM", "7PM", "8PM", "9PM", "10PM", "11PM",
+  // Hours for the grid display
+  const hourLabels = [
+    "12AM", "1AM", "2AM", "3AM", "4AM", "5AM", "6AM", "7AM", "8AM", "9AM", "10AM", "11AM", 
+    "12PM", "1PM", "2PM", "3PM", "4PM", "5PM", "6PM", "7PM", "8PM", "9PM", "10PM", "11PM"
   ];
+  
+  // For the actual time slots (each hour is split into two 30-min slots)
+  const timeSlots = [];
+  hourLabels.forEach(hour => {
+    timeSlots.push(`${hour}:00`);
+    timeSlots.push(`${hour}:30`);
+  });
   
   // Days of the week
   const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
@@ -145,6 +152,11 @@ const Phase1Screen2Screen = props => {
     setAvailability(updatedAvailability);
   };
   
+  // Clear all selected availability slots
+  const clearAvailability = () => {
+    setAvailability({});
+  };
+  
   // Check if a slot is selected
   const isSlotSelected = (day, time) => {
     const key = `${day}-${time}`;
@@ -177,6 +189,62 @@ const Phase1Screen2Screen = props => {
       return `WEEK OF ${startMonth} ${startDay} - ${endMonth} ${endDay}`;
     }
   };
+  
+  // Convert time string to hour index (0-47 for the 48 30-min slots)
+  const getTimeSlotIndex = (timeString) => {
+    return timeOptions.indexOf(timeString);
+  };
+  
+  // Get filtered time slots and hour labels based on selected time range
+  const getFilteredTimeSlots = () => {
+    // Default to showing all slots if no times are selected
+    if (!startTime || !endTime) {
+      return {
+        hourIndices: hourLabels.map((_, index) => index),
+        slotIndices: Array.from({ length: 48 }, (_, index) => index)
+      };
+    }
+    
+    const startIndex = getTimeSlotIndex(startTime);
+    const endIndex = getTimeSlotIndex(endTime);
+    
+    if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+      return {
+        hourIndices: hourLabels.map((_, index) => index),
+        slotIndices: Array.from({ length: 48 }, (_, index) => index)
+      };
+    }
+    
+    // Calculate which hour slots to show
+    const startHourIndex = Math.floor(startIndex / 2);
+    const endHourIndex = Math.ceil(endIndex / 2);
+    
+    const hourIndices = [];
+    for (let i = startHourIndex; i < endHourIndex; i++) {
+      hourIndices.push(i);
+    }
+    
+    // Calculate which 30-min slots to show
+    const slotIndices = [];
+    for (let i = startIndex; i <= endIndex; i++) {
+      slotIndices.push(i);
+    }
+    
+    return { hourIndices, slotIndices };
+  };
+  
+  // Get hour label for a time slot index
+  const getHourLabelForTimeSlot = (slotIndex) => {
+    const hourIndex = Math.floor(slotIndex / 2);
+    return hourLabels[hourIndex];
+  };
+  
+  // Determine if a slot is first of its hour (for labels)
+  const isFirstSlotOfHour = (slotIndex) => {
+    return slotIndex % 2 === 0;
+  };
+  
+  const { hourIndices, slotIndices } = getFilteredTimeSlots();
   
   return (
     <ScreenContainer
@@ -236,6 +304,22 @@ const Phase1Screen2Screen = props => {
           >
             {'HOST CALENDAR'}
           </Text>
+
+          {/* Clear Availability Button */}
+          <Button
+            onPress={clearAvailability}
+            style={StyleSheet.applyWidth(
+              {
+                backgroundColor: 'rgb(211, 39, 148)',
+                marginTop: 10,
+                marginHorizontal: 140,
+                borderRadius: 10,
+                padding: 8
+              },
+              dimensions.width
+            )}
+            title="Clear"
+          />
 
           <View
             style={StyleSheet.applyWidth(
@@ -367,120 +451,8 @@ const Phase1Screen2Screen = props => {
               value={endTime}
             />
           </View>
-          {/* View 4 */}
-          <View
-            style={StyleSheet.applyWidth(
-              {
-                alignContent: 'flex-start',
-                alignItems: 'flex-start',
-                alignSelf: 'center',
-                flexDirection: 'row',
-                flexWrap: 'nowrap',
-                justifyContent: 'space-around',
-                top: 35,
-                width: 300,
-              },
-              dimensions.width
-            )}
-          >
-            <Text
-              accessible={true}
-              selectable={false}
-              {...GlobalStyles.TextStyles(theme)['Text'].props}
-              style={StyleSheet.applyWidth(
-                StyleSheet.compose(
-                  GlobalStyles.TextStyles(theme)['Text'].style,
-                  theme.typography.body1,
-                  { fontFamily: 'ADLaMDisplay_400Regular', fontSize: 12 }
-                ),
-                dimensions.width
-              )}
-            >
-              {'Weekly'}
-            </Text>
-            {/* Text 2 */}
-            <Text
-              accessible={true}
-              selectable={false}
-              {...GlobalStyles.TextStyles(theme)['Text'].props}
-              style={StyleSheet.applyWidth(
-                StyleSheet.compose(
-                  GlobalStyles.TextStyles(theme)['Text'].style,
-                  theme.typography.body1,
-                  { fontFamily: 'ADLaMDisplay_400Regular', fontSize: 12 }
-                ),
-                dimensions.width
-              )}
-            >
-              {'Monthly'}
-            </Text>
-            {/* Text 3 */}
-            <Text
-              accessible={true}
-              selectable={false}
-              {...GlobalStyles.TextStyles(theme)['Text'].props}
-              style={StyleSheet.applyWidth(
-                StyleSheet.compose(
-                  GlobalStyles.TextStyles(theme)['Text'].style,
-                  theme.typography.body1,
-                  { fontFamily: 'ADLaMDisplay_400Regular', fontSize: 12 }
-                ),
-                dimensions.width
-              )}
-            >
-              {'Repeat?'}
-            </Text>
-          </View>
-          {/* View 3 */}
-          <View
-            style={StyleSheet.applyWidth(
-              { flexDirection: 'row', justifyContent: 'space-evenly', top: 40 },
-              dimensions.width
-            )}
-          >
-            {/* WeeklyCheckbox */}
-            <Checkbox
-              onPress={newWeeklyCheckboxValue => {
-                const checkboxValue = newWeeklyCheckboxValue;
-                try {
-                  setCheckboxValue(newWeeklyCheckboxValue);
-                } catch (err) {
-                  console.error(err);
-                }
-              }}
-              color={theme.colors.text.strong}
-              status={checkboxValue}
-              uncheckedColor={theme.colors.text.strong}
-            />
-            {/* MonthlyCheckbox */}
-            <Checkbox
-              onPress={newMonthlyCheckboxValue => {
-                const checkboxValue = newMonthlyCheckboxValue;
-                try {
-                  setCheckbox2Value(newMonthlyCheckboxValue);
-                } catch (err) {
-                  console.error(err);
-                }
-              }}
-              color={theme.colors.text.strong}
-              status={checkbox2Value}
-              uncheckedColor={theme.colors.text.strong}
-            />
-            {/* RepeatCheckbox */}
-            <Checkbox
-              onPress={newRepeatCheckboxValue => {
-                const checkboxValue = newRepeatCheckboxValue;
-                try {
-                  setCheckbox3Value(newRepeatCheckboxValue);
-                } catch (err) {
-                  console.error(err);
-                }
-              }}
-              color={theme.colors.text.strong}
-              status={checkbox3Value}
-              uncheckedColor={theme.colors.text.strong}
-            />
-          </View>
+         
+         
           {/* Text 2 */}
           <Text
             accessible={true}
@@ -525,7 +497,7 @@ const Phase1Screen2Screen = props => {
             {...GlobalStyles.PickerStyles(theme)['Picker'].props}
             dropDownBackgroundColor={theme.colors.background.danger}
             options={durationOptions}
-            placeholder={'Select duration'}
+            placeholder={'Select Duration'}
             placeholderTextColor={theme.colors.text.medium}
             style={StyleSheet.applyWidth(
               StyleSheet.compose(
@@ -537,7 +509,7 @@ const Phase1Screen2Screen = props => {
                   borderRadius: 6,
                   color: 'rgb(0, 0, 0)',
                   fontFamily: 'ADLaMDisplay_400Regular',
-                  fontSize: 15,
+                  fontSize: 11,
                   marginTop: 10,
                   textAlign: 'center',
                   width: 130,
@@ -612,41 +584,54 @@ const Phase1Screen2Screen = props => {
           <View style={StyleSheet.applyWidth({ marginBottom: 50 }, dimensions.width)}>
             {/* Availability Grid */}
             <View style={{ marginHorizontal: 10 }}>
-              {/* Time Column */}
+              {/* Grid with hour labels and 30-min intervals */}
               <View style={{ flexDirection: 'row' }}>
-                {/* Time labels column */}
-                <View style={{ width: 50 }}>
-                  {timeSlots.map((time, index) => (
-                    <View 
-                      key={`time-${index}`} 
-                      style={{ 
-                        height: 50, 
-                        justifyContent: 'flex-start',
-                        paddingTop: 5
-                      }}
-                    >
-                      <Text style={{ fontSize: 12 }}>{time}</Text>
-                    </View>
-                  ))}
+                {/* Time labels column - only show filtered hours */}
+                <View style={{ width: 35 }}>
+                  {slotIndices.map((slotIndex, i) => {
+                    // Only show hour label at the top of each hour (first 30-min slot)
+                    if (i === 0 || isFirstSlotOfHour(slotIndex)) {
+                      return (
+                        <View 
+                          key={`hour-label-${slotIndex}`} 
+                          style={{ 
+                            height: 25, // Height for single 30-min slot
+                            justifyContent: 'top',
+                          }}
+                        >
+                          <Text style={{ fontSize: 12 }}>
+                            {getHourLabelForTimeSlot(slotIndex)}
+                          </Text>
+                        </View>
+                      );
+                    } else {
+                      return (
+                        <View 
+                          key={`hour-spacer-${slotIndex}`} 
+                          style={{ height: 25 }}
+                        />
+                      );
+                    }
+                  })}
                 </View>
                 
-                {/* Day columns */}
+                {/* Day columns with filtered 30-min interval cells */}
                 <View style={{ flex: 1, flexDirection: 'row' }}>
                   {daysOfWeek.map((day, dayIndex) => (
                     <View key={`day-${dayIndex}`} style={{ flex: 1 }}>
-                      {timeSlots.map((time, timeIndex) => (
+                      {slotIndices.map((slotIndex, i) => (
                         <Touchable
-                          key={`slot-${dayIndex}-${timeIndex}`}
-                          onPress={() => toggleAvailability(dayIndex, timeIndex)}
+                          key={`time-slot-${dayIndex}-${slotIndex}`}
+                          onPress={() => toggleAvailability(dayIndex, slotIndex)}
                         >
                           <View
                             style={{
-                              height: 50,
+                              height: 25,
                               borderWidth: 1,
                               borderColor: '#ddd',
-                              backgroundColor: isSlotSelected(dayIndex, timeIndex) 
+                              backgroundColor: isSlotSelected(dayIndex, slotIndex) 
                                 ? 'rgb(211, 39, 148)' 
-                                : timeIndex % 2 === 0 ? '#fce4ec' : '#f5f5f5',
+                                : Math.floor(slotIndex / 2) % 2 === 0 ? '#fce4ec' : '#f5f5f5',
                             }}
                           />
                         </Touchable>
@@ -676,6 +661,24 @@ const Phase1Screen2Screen = props => {
                   </View>
                 ))}
               </View>
+              
+              {/* Time Range Indicator */}
+              {startTime && endTime && (
+                <View style={{ 
+                  alignItems: 'center', 
+                  marginTop: 10,
+                  backgroundColor: '#e1f5fe',
+                  paddingVertical: 5,
+                  borderRadius: 10
+                }}>
+                  <Text style={{ 
+                    fontSize: 14, 
+                    fontWeight: '500' 
+                  }}>
+                    {`Showing availability: ${startTime} - ${endTime}`}
+                  </Text>
+                </View>
+              )}
               
               {/* Week Label */}
               <View style={{ 
