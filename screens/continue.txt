@@ -146,7 +146,7 @@ const Phase1Screen2Screen = props => {
   // Get day of week letter (S,M,T,W,T,F,S) from date
   const getDayLetter = (date) => {
     const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    return ["Su", "M", "Tu", "W", "Th", "F", "Sa"][dayIndex];
+    return ["S", "M", "T", "W", "T", "F", "S"][dayIndex];
   };
   
   // Handle day press in calendar
@@ -350,32 +350,6 @@ const Phase1Screen2Screen = props => {
   const showCalendar = () => {
     setCalendarVisible(true);
   };
-
-  // Function to get all unavailable time slots
-const getUnavailableTimes = () => {
-  const unavailableTimes = {};
-  
-  selectedDates.forEach((date, dayIndex) => {
-    const dateString = formatDateString(date);
-    const dayUnavailableTimes = [];
-    
-    // Check each time slot in our filtered view
-    slotIndices.forEach((slotIndex) => {
-      if (!isSlotSelected(dayIndex, slotIndex)) {
-        // This slot is unavailable - add it to the list
-        const timeString = timeOptions[slotIndex];
-        dayUnavailableTimes.push(timeString);
-      }
-    });
-    
-    // Only add days that have unavailable times
-    if (dayUnavailableTimes.length > 0) {
-      unavailableTimes[dateString] = dayUnavailableTimes;
-    }
-  });
-  
-  return unavailableTimes;
-};
   
   return (
     <ScreenContainer

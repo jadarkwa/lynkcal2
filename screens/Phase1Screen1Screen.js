@@ -93,53 +93,34 @@ const Phase1Screen1Screen = props => {
     >
       {/* Share Cal Button */}
       <Button
-        accessible={true}
-        iconPosition={'left'}
-        onPress={() => {
-          try {
+    accessible={true}
+    iconPosition={'left'}
+    onPress={() => {
+        try {
             navigation.navigate('Phase1Screen2Screen');
-          } catch (err) {
+        } catch (err) {
             console.error(err);
-          }
-        }}
-        style={StyleSheet.applyWidth(
-          StyleSheet.compose(theme.typography.caption, {
+        }
+    }}
+    style={StyleSheet.applyWidth(
+        StyleSheet.compose(theme.typography.caption, {
             backgroundColor: 'rgb(255, 222, 222)',
             borderLeftWidth: 0,
             color: 'rgb(0, 0, 0)',
             fontFamily: 'ADLaMDisplay_400Regular',
-            left: 10,
+            left: 20,
             paddingLeft: 0,
+            paddingTop: 15, // Add this to push text down
             textAlign: 'center',
             top: 20,
-            width: '70%',
-          }),
-          dimensions.width
-        )}
-        title={'SHARE AVAILABLE CALENDAR\n'}
-      />
-      {/* Settings Button */}
-      <Button
-        accessible={true}
-        {...GlobalStyles.ButtonStyles(theme)['Button'].props}
-        icon={'Feather/settings'}
-        iconPosition={'right'}
-        style={StyleSheet.applyWidth(
-          StyleSheet.compose(
-            GlobalStyles.ButtonStyles(theme)['Button'].style,
-            theme.typography.button,
-            {
-              backgroundColor: 'rgb(255, 222, 222)',
-              bottom: 20,
-              left: 315,
-              textAlign: 'left',
-              width: 50,
-            }
-          ),
-          dimensions.width
-        )}
-        title={'\n'}
-      />
+            width: '90%',
+            marginBottom: 40,
+        }),
+        dimensions.width
+    )}
+    title={'SHARE AVAILABLE CALENDAR\n'}
+/>
+      
       {/* View 3 */}
       <View
         style={StyleSheet.applyWidth(
@@ -346,48 +327,49 @@ const Phase1Screen1Screen = props => {
         </View>
         {/* View 3 */}
         <View
-          style={StyleSheet.applyWidth(
-            {
-              flexDirection: 'row',
-              gap: 10,
-              justifyContent: 'flex-start',
-              left: 93,
-            },
-            dimensions.width
-          )}
-        >
-          <Checkbox
-            onPress={newCheckboxValue => {
-              const checkboxValue = newCheckboxValue;
-              try {
+    style={StyleSheet.applyWidth(
+        {
+            flexDirection: 'row',
+            gap: 10,
+            justifyContent: 'flex-start',
+            left: 93,
+        },
+        dimensions.width
+    )}
+>
+    <Checkbox
+        onPress={newCheckboxValue => {
+            const checkboxValue = newCheckboxValue;
+            try {
                 setCheckboxValue8(newCheckboxValue);
-              } catch (err) {
+            } catch (err) {
                 console.error(err);
-              }
-            }}
-            status={checkboxValue8}
-            uncheckedColor={theme.colors.text.light}
-          />
-          <Text
-            accessible={true}
-            selectable={false}
-            {...GlobalStyles.TextStyles(theme)['Text'].props}
-            style={StyleSheet.applyWidth(
-              StyleSheet.compose(
+            }
+        }}
+        status={checkboxValue8}
+        color="black" // Checked color = black
+        uncheckedColor="gray" // Unchecked color = gray
+    />
+    <Text
+        accessible={true}
+        selectable={false}
+        {...GlobalStyles.TextStyles(theme)['Text'].props}
+        style={StyleSheet.applyWidth(
+            StyleSheet.compose(
                 GlobalStyles.TextStyles(theme)['Text'].style,
                 theme.typography.body1,
                 {
-                  fontFamily: 'ADLaMDisplay_400Regular',
-                  fontSize: 10,
-                  paddingTop: 5,
+                    fontFamily: 'ADLaMDisplay_400Regular',
+                    fontSize: 10,
+                    paddingTop: 5,
                 }
-              ),
-              dimensions.width
-            )}
-          >
-            {'SELECT ALL CONTACTS'}
-          </Text>
-        </View>
+            ),
+            dimensions.width
+        )}
+    >
+        {'SELECT ALL CONTACTS'}
+    </Text>
+</View>
       </View>
       <TextInput
         autoCapitalize={'none'}
