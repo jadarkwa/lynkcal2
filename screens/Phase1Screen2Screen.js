@@ -19,6 +19,7 @@ import useWindowDimensions from '../utils/useWindowDimensions';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { Calendar } from 'react-native-calendars';
+import { useAvailabilityContext } from '../contexts/AvailabilityContext';
 
 const Phase1Screen2Screen = props => {
   const { theme } = props;
@@ -37,16 +38,27 @@ const Phase1Screen2Screen = props => {
   const [selectedDuration, setSelectedDuration] = React.useState('');
   
   // Calendar grid state
-  const [availability, setAvailability] = useState({});
+ // const [availability, setAvailability] = useState({});
   
   // Calendar modal visibility state
   const [calendarVisible, setCalendarVisible] = useState(false);
   
   // Selected dates (1-7 days)
-  const [selectedDates, setSelectedDates] = useState(getDefaultDates());
+  //const [selectedDates, setSelectedDates] = useState(getDefaultDates());
+
+  const { 
+    availability, 
+    setAvailability, 
+    selectedDates, 
+    setSelectedDates,
+    getUnavailableTimes,
+    handleSaveAvailability
+  } = useAvailabilityContext();
   
   // Marked dates in calendar
   const [markedDates, setMarkedDates] = useState({});
+
+  
   
   // Get default dates (current day + 6 more days)
   function getDefaultDates() {
@@ -72,6 +84,9 @@ const Phase1Screen2Screen = props => {
   
   // Initialize markedDates when component mounts
   useEffect(() => {
+    if (selectedDates.length === 0) {
+      setSelectedDates(getDefaultDates());
+    }
     updateMarkedDates(selectedDates);
   }, []);
   
@@ -363,6 +378,8 @@ const Phase1Screen2Screen = props => {
   };
 
   // Function to get all unavailable time slots
+
+/*
 const getUnavailableTimes = () => {
   const unavailableTimes = {};
   
@@ -388,7 +405,12 @@ const getUnavailableTimes = () => {
   return unavailableTimes;
 };
 
+
+
+
+
 const handleSaveAvailability = async () => {
+  
   try {
     const unavailableTimes = getUnavailableTimes();
     
@@ -422,6 +444,8 @@ const handleSaveAvailability = async () => {
       [{ text: "OK" }]
     );
   }
+
+  
 };
 
 
@@ -446,6 +470,8 @@ const shareUnavailabilityFile = async (filePath, fileName) => {
     console.error("Error sharing file:", error);
   }
 };
+
+*/
   
   return (
     <ScreenContainer
@@ -1015,19 +1041,34 @@ const shareUnavailabilityFile = async (filePath, fileName) => {
             
             {/* Submit Button */}
             <Button
-            onPress={handleSaveAvailability}
-              style={StyleSheet.applyWidth(
-                {
-                  backgroundColor: 'rgb(211, 39, 148)',
-                  marginTop: 30,
-                  marginHorizontal: 50,
-                  borderRadius: 10,
-                  padding: 12
-                },
-                dimensions.width
-              )}
-              title="Save Availability"
-            />
+  onPress={async () => {
+    const success = await handleSaveAvailability();
+    if (success) {
+      Alert.alert(
+        "Availability Saved"
+        //"Your availability has been saved and can be shared from the contacts screen.",
+        //[{ text: "OK" }]
+      );
+    } else {
+      Alert.alert(
+        "Error",
+        "There was an error saving your availability. Please try again.",
+        [{ text: "OK" }]
+      );
+    }
+  }}
+  style={StyleSheet.applyWidth(
+    {
+      backgroundColor: 'rgb(211, 39, 148)',
+      marginTop: 30,
+      marginHorizontal: 50,
+      borderRadius: 10,
+      padding: 12
+    },
+    dimensions.width
+  )}
+  title="Save Availability"
+/>
           </View>
         </View>
       </ScrollView>

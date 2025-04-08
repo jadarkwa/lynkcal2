@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { AvailabilityProvider } from './contexts/AvailabilityContext';
 import { Provider as ThemeProvider } from '@draftbit/ui';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
@@ -81,7 +82,7 @@ if (Platform.OS === 'web') {
     });
     observer.observe(document.documentElement, { attributes: true });
 
-    function remove(): void {
+    function remove() {
       systemValue.removeEventListener('change', systemValueListener);
       observer.disconnect();
     }
@@ -138,6 +139,7 @@ const App = () => {
   }
 
   return (
+    <AvailabilityProvider>
     <>
       {Platform.OS === 'ios' ? (
         <StatusBar
@@ -175,6 +177,7 @@ const App = () => {
         </SafeAreaProvider>
       </ThemeProvider>
     </>
+    </AvailabilityProvider>
   );
 };
 

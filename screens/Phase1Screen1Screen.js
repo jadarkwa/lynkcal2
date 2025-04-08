@@ -10,7 +10,7 @@ import {
   Touchable,
   withTheme,
 } from '@draftbit/ui';
-import { Text, View } from 'react-native';
+import { Text, View, Alert } from 'react-native';
 import * as GlobalStyles from '../GlobalStyles.js';
 import * as GlobalVariables from '../config/GlobalVariableContext';
 import Images from '../config/Images';
@@ -20,6 +20,8 @@ import * as StyleSheet from '../utils/StyleSheet';
 import imageSource from '../utils/imageSource';
 import openShareUtil from '../utils/openShare';
 import useWindowDimensions from '../utils/useWindowDimensions';
+import { useAvailabilityContext } from '../contexts/AvailabilityContext';
+import { ScrollView } from 'react-native';
 
 const Phase1Screen1Screen = props => {
   const { theme, navigation } = props;
@@ -54,6 +56,10 @@ const Phase1Screen1Screen = props => {
   const [selectAllContacts, setSelectAllContacts] = React.useState(false);
   const [textInputValue, setTextInputValue] = React.useState('');
   const [textInputValue2, setTextInputValue2] = React.useState('');
+
+  // Import availability context
+  const { availability, selectedDates, getUnavailableTimes, handleSaveAvailability } = useAvailabilityContext();
+
   const myFunctionName = () => {
     function handleSelectAllContacts({
       allowInviteRequests,
@@ -82,6 +88,49 @@ const Phase1Screen1Screen = props => {
     }
   };
 
+  // Function to handle send button click
+  const handleSendButtonClick = async () => {
+    // Check if any availability slots have been selected
+    const unavailableTimes = getUnavailableTimes();
+    const hasSelectedAvailability = Object.keys(availability).length > 0;
+    const hasSelectedDates = selectedDates.length > 0;
+
+    if (!hasSelectedDates) {
+      Alert.alert(
+        "No Dates Selected",
+        "Please select at least one date in the calendar screen before sending.",
+        [{ text: "Set Availability", onPress: () => navigation.navigate('Phase1Screen2Screen') }]
+      );
+      return;
+    }
+
+    if (!hasSelectedAvailability) {
+      Alert.alert(
+        "No Availability Selected",
+        "Please select your available time slots before sending.",
+        [{ text: "Set Availability", onPress: () => navigation.navigate('Phase1Screen2Screen') }]
+      );
+      return;
+    }
+
+    // If availability is set, proceed with saving and sharing
+    try {
+      await handleSaveAvailability();
+      Alert.alert(
+        "Availability Sent",
+        "Your availability has been successfully sent to the selected contacts.",
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Error sending availability:", error);
+      Alert.alert(
+        "Error",
+        "There was an error sending your availability. Please try again.",
+        [{ text: "OK" }]
+      );
+    }
+  };
+
   return (
     <ScreenContainer
       hasSafeArea={false}
@@ -91,19 +140,30 @@ const Phase1Screen1Screen = props => {
         dimensions.width
       )}
     >
+
+      <ScrollView>
+              <View
+                style={StyleSheet.applyWidth(
+                  { flexDirection: 'column' },
+                  dimensions.width
+                )}
+              >
+
+
+
       {/* Share Cal Button */}
       <Button
-    accessible={true}
-    iconPosition={'left'}
-    onPress={() => {
-        try {
+        accessible={true}
+        iconPosition={'left'}
+        onPress={() => {
+          try {
             navigation.navigate('Phase1Screen2Screen');
-        } catch (err) {
+          } catch (err) {
             console.error(err);
-        }
-    }}
-    style={StyleSheet.applyWidth(
-        StyleSheet.compose(theme.typography.caption, {
+          }
+        }}
+        style={StyleSheet.applyWidth(
+          StyleSheet.compose(theme.typography.caption, {
             backgroundColor: 'rgb(255, 222, 222)',
             borderLeftWidth: 0,
             color: 'rgb(0, 0, 0)',
@@ -115,11 +175,11 @@ const Phase1Screen1Screen = props => {
             top: 20,
             width: '90%',
             marginBottom: 40,
-        }),
-        dimensions.width
-    )}
-    title={'SHARE AVAILABLE CALENDAR\n'}
-/>
+          }),
+          dimensions.width
+        )}
+        title={'SHARE AVAILABLE CALENDAR\n'}
+      />
       
       {/* View 3 */}
       <View
@@ -327,49 +387,49 @@ const Phase1Screen1Screen = props => {
         </View>
         {/* View 3 */}
         <View
-    style={StyleSheet.applyWidth(
-        {
-            flexDirection: 'row',
-            gap: 10,
-            justifyContent: 'flex-start',
-            left: 93,
-        },
-        dimensions.width
-    )}
->
-    <Checkbox
-        onPress={newCheckboxValue => {
-            const checkboxValue = newCheckboxValue;
-            try {
+          style={StyleSheet.applyWidth(
+            {
+              flexDirection: 'row',
+              gap: 10,
+              justifyContent: 'flex-start',
+              left: 93,
+            },
+            dimensions.width
+          )}
+        >
+          <Checkbox
+            onPress={newCheckboxValue => {
+              const checkboxValue = newCheckboxValue;
+              try {
                 setCheckboxValue8(newCheckboxValue);
-            } catch (err) {
+              } catch (err) {
                 console.error(err);
-            }
-        }}
-        status={checkboxValue8}
-        color="black" // Checked color = black
-        uncheckedColor="gray" // Unchecked color = gray
-    />
-    <Text
-        accessible={true}
-        selectable={false}
-        {...GlobalStyles.TextStyles(theme)['Text'].props}
-        style={StyleSheet.applyWidth(
-            StyleSheet.compose(
+              }
+            }}
+            status={checkboxValue8}
+            color="black" // Checked color = black
+            uncheckedColor="gray" // Unchecked color = gray
+          />
+          <Text
+            accessible={true}
+            selectable={false}
+            {...GlobalStyles.TextStyles(theme)['Text'].props}
+            style={StyleSheet.applyWidth(
+              StyleSheet.compose(
                 GlobalStyles.TextStyles(theme)['Text'].style,
                 theme.typography.body1,
                 {
-                    fontFamily: 'ADLaMDisplay_400Regular',
-                    fontSize: 10,
-                    paddingTop: 5,
+                  fontFamily: 'ADLaMDisplay_400Regular',
+                  fontSize: 10,
+                  paddingTop: 5,
                 }
-            ),
-            dimensions.width
-        )}
-    >
-        {'SELECT ALL CONTACTS'}
-    </Text>
-</View>
+              ),
+              dimensions.width
+            )}
+          >
+            {'SELECT ALL CONTACTS'}
+          </Text>
+        </View>
       </View>
       <TextInput
         autoCapitalize={'none'}
@@ -586,6 +646,7 @@ const Phase1Screen1Screen = props => {
         <Button
           accessible={true}
           iconPosition={'left'}
+          onPress={handleSendButtonClick}
           {...GlobalStyles.ButtonStyles(theme)['Button'].props}
           style={StyleSheet.applyWidth(
             StyleSheet.compose(
@@ -594,11 +655,11 @@ const Phase1Screen1Screen = props => {
               {
                 backgroundColor: theme.colors.border.danger,
                 borderRadius: 10,
-                height: 0,
                 marginBottom: 10,
                 marginLeft: 150,
                 marginRight: 150,
                 marginTop: 10,
+                paddingVertical: 10,
                 width: 100,
               }
             ),
@@ -607,6 +668,8 @@ const Phase1Screen1Screen = props => {
           title={'Send'}
         />
       </View>
+      </View>
+      </ScrollView>
     </ScreenContainer>
   );
 };

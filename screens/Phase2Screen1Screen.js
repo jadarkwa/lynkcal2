@@ -17,6 +17,7 @@ import Breakpoints from '../utils/Breakpoints';
 import * as StyleSheet from '../utils/StyleSheet';
 import imageSource from '../utils/imageSource';
 import useWindowDimensions from '../utils/useWindowDimensions';
+import { handleSaveAvailability } from './Phase1Screen2Screen';
 
 const Phase2Screen1Screen = props => {
   const { theme } = props;
