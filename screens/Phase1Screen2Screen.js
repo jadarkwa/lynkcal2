@@ -16,6 +16,8 @@ import Breakpoints from '../utils/Breakpoints';
 import * as StyleSheet from '../utils/StyleSheet';
 import imageSource from '../utils/imageSource';
 import useWindowDimensions from '../utils/useWindowDimensions';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { Calendar } from 'react-native-calendars';
 
 const Phase1Screen2Screen = props => {
@@ -216,13 +218,22 @@ const Phase1Screen2Screen = props => {
   
   // Handle grid cell selection with duration
   const toggleAvailability = (dayIndex, timeIndex) => {
+    // Check if duration is selected
+    if (!selectedDuration) {
+      Alert.alert(
+        "Specify Duration",
+        "Please select a duration before marking availability.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+  
     const durationSlots = getDurationInSlots();
-    
     const updatedAvailability = { ...availability };
-    
+  
     // If we're selecting, apply duration. If unselecting, just unselect the clicked slot
     const isCurrentlySelected = availability[`${dayIndex}-${timeIndex}`] === true;
-    
+  
     if (isCurrentlySelected) {
       // Just unselect this specific slot
       updatedAvailability[`${dayIndex}-${timeIndex}`] = false;
@@ -234,7 +245,7 @@ const Phase1Screen2Screen = props => {
         }
       }
     }
-    
+  
     setAvailability(updatedAvailability);
   };
   
@@ -375,6 +386,65 @@ const getUnavailableTimes = () => {
   });
   
   return unavailableTimes;
+};
+
+const handleSaveAvailability = async () => {
+  try {
+    const unavailableTimes = getUnavailableTimes();
+    
+    // Convert to JSON string for export
+    const jsonData = JSON.stringify(unavailableTimes, null, 2);
+    
+    // Define the file path
+    const fileName = 'unavailable_times.json';
+    const filePath = FileSystem.documentDirectory + fileName;
+    
+    // Write the JSON data to the file
+    await FileSystem.writeAsStringAsync(filePath, jsonData);
+    
+    // Log the file path for debugging
+    console.log(`File saved successfully at: ${filePath}`);
+    
+    // Share the file with the user
+    shareUnavailabilityFile(filePath, fileName);
+    
+    // Alert to show the saved data
+    Alert.alert(
+      "Availability Saved",
+      `Unavailable times have been saved to ${fileName}`,
+      [{ text: "OK" }]
+    );
+  } catch (error) {
+    console.error("Error saving availability:", error);
+    Alert.alert(
+      "Error",
+      "There was an error saving your availability. Please try again.",
+      [{ text: "OK" }]
+    );
+  }
+};
+
+
+const shareUnavailabilityFile = async (filePath, fileName) => {
+  try {
+    const shareResult = await FileSystem.getContentUriAsync(filePath);
+    
+    // Use the Sharing API to let the user share or open the file
+    // To use this, you'll need to add: import * as Sharing from 'expo-sharing';
+    // For now, we'll just log the URI
+    console.log("File can be accessed at:", shareResult);
+    
+    
+    if (await Sharing.isAvailableAsync()) {
+       await Sharing.shareAsync(shareResult, {
+       mimeType: 'application/json',
+         dialogTitle: 'Share your unavailable times',
+         UTI: 'public.json'
+       });
+     }
+  } catch (error) {
+    console.error("Error sharing file:", error);
+  }
 };
   
   return (
@@ -945,6 +1015,7 @@ const getUnavailableTimes = () => {
             
             {/* Submit Button */}
             <Button
+            onPress={handleSaveAvailability}
               style={StyleSheet.applyWidth(
                 {
                   backgroundColor: 'rgb(211, 39, 148)',
