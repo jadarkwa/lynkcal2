@@ -19,7 +19,7 @@ import useWindowDimensions from '../utils/useWindowDimensions';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { Calendar } from 'react-native-calendars';
-import { useAvailabilityContext } from '../contexts/AvailabilityContext';
+import { useAvailabilityContext, updateAvailabilitySettings } from '../contexts/AvailabilityContext';
 
 const Phase1Screen2Screen = props => {
   const { theme } = props;
@@ -36,24 +36,21 @@ const Phase1Screen2Screen = props => {
   
   // Duration selection
   const [selectedDuration, setSelectedDuration] = React.useState('');
-  
-  // Calendar grid state
- // const [availability, setAvailability] = useState({});
-  
   // Calendar modal visibility state
   const [calendarVisible, setCalendarVisible] = useState(false);
-  
-  // Selected dates (1-7 days)
-  //const [selectedDates, setSelectedDates] = useState(getDefaultDates());
 
   const { 
     availability, 
     setAvailability, 
     selectedDates, 
     setSelectedDates,
+    timeSettings,
+    updateAvailabilitySettings,
     getUnavailableTimes,
-    handleSaveAvailability
+    handleSaveAvailability,
+    isSlotSelected: contextIsSlotSelected // Rename to avoid conflict
   } = useAvailabilityContext();
+
   
   // Marked dates in calendar
   const [markedDates, setMarkedDates] = useState({});
@@ -89,6 +86,14 @@ const Phase1Screen2Screen = props => {
     }
     updateMarkedDates(selectedDates);
   }, []);
+
+
+  // Update context with time settings when they change
+  useEffect(() => {
+    if (startTime && endTime && selectedDuration) {
+      updateAvailabilitySettings(startTime, endTime, selectedDuration);
+    }
+  }, [startTime, endTime, selectedDuration]);
   
   // Update marked dates in calendar
   const updateMarkedDates = (dates) => {
@@ -111,7 +116,6 @@ const Phase1Screen2Screen = props => {
     const day = date.getDate();
     return { month, day };
   };
-  
   // Create 24-hour time options
   const timeOptions = [
     "12:00 AM", "12:30 AM", "1:00 AM", "1:30 AM", "2:00 AM", "2:30 AM", "3:00 AM", "3:30 AM", 
@@ -121,13 +125,11 @@ const Phase1Screen2Screen = props => {
     "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", 
     "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM"
   ];
-  
   // Create time options for picker
   const timePickerOptions = timeOptions.map(time => ({
     label: time,
     value: time,
   }));
-  
   // Duration options
   const durationOptions = [
     { label: "30 MINS", value: "30 MINS" },
@@ -135,7 +137,6 @@ const Phase1Screen2Screen = props => {
     { label: "2 HRS", value: "2 HRS" },
     { label: "3 HRS", value: "3 HRS" }
   ];
-  
   // Convert duration to number of time slots
   const getDurationInSlots = () => {
     switch (selectedDuration) {
@@ -146,7 +147,6 @@ const Phase1Screen2Screen = props => {
       default: return 6; // Default to 3 HRS
     }
   };
-  
   // Hours for the grid display
   const hourLabels = [
     "12AM", "1AM", "2AM", "3AM", "4AM", "5AM", "6AM", "7AM", "8AM", "9AM", "10AM", "11AM", 
@@ -180,7 +180,6 @@ const Phase1Screen2Screen = props => {
       
       // Update state
       setSelectedDates(updatedDates);
-      
       // Update marked dates
       const newMarkedDates = { ...markedDates };
       delete newMarkedDates[selectedDateStr];
@@ -242,7 +241,6 @@ const Phase1Screen2Screen = props => {
       );
       return;
     }
-  
     const durationSlots = getDurationInSlots();
     const updatedAvailability = { ...availability };
   
@@ -263,12 +261,10 @@ const Phase1Screen2Screen = props => {
   
     setAvailability(updatedAvailability);
   };
-  
   // Clear all selected availability slots
   const clearAvailability = () => {
     setAvailability({});
-  };
-  
+  };  
   // Check if a slot is selected
   const isSlotSelected = (day, time) => {
     const key = `${day}-${time}`;
@@ -358,7 +354,6 @@ const Phase1Screen2Screen = props => {
     
     return { hourIndices, slotIndices };
   };
-  
   // Get hour label for a time slot index
   const getHourLabelForTimeSlot = (slotIndex) => {
     const hourIndex = Math.floor(slotIndex / 2);
@@ -376,103 +371,6 @@ const Phase1Screen2Screen = props => {
   const showCalendar = () => {
     setCalendarVisible(true);
   };
-
-  // Function to get all unavailable time slots
-
-/*
-const getUnavailableTimes = () => {
-  const unavailableTimes = {};
-  
-  selectedDates.forEach((date, dayIndex) => {
-    const dateString = formatDateString(date);
-    const dayUnavailableTimes = [];
-    
-    // Check each time slot in our filtered view
-    slotIndices.forEach((slotIndex) => {
-      if (!isSlotSelected(dayIndex, slotIndex)) {
-        // This slot is unavailable - add it to the list
-        const timeString = timeOptions[slotIndex];
-        dayUnavailableTimes.push(timeString);
-      }
-    });
-    
-    // Only add days that have unavailable times
-    if (dayUnavailableTimes.length > 0) {
-      unavailableTimes[dateString] = dayUnavailableTimes;
-    }
-  });
-  
-  return unavailableTimes;
-};
-
-
-
-
-
-const handleSaveAvailability = async () => {
-  
-  try {
-    const unavailableTimes = getUnavailableTimes();
-    
-    // Convert to JSON string for export
-    const jsonData = JSON.stringify(unavailableTimes, null, 2);
-    
-    // Define the file path
-    const fileName = 'unavailable_times.json';
-    const filePath = FileSystem.documentDirectory + fileName;
-    
-    // Write the JSON data to the file
-    await FileSystem.writeAsStringAsync(filePath, jsonData);
-    
-    // Log the file path for debugging
-    console.log(`File saved successfully at: ${filePath}`);
-    
-    // Share the file with the user
-    shareUnavailabilityFile(filePath, fileName);
-    
-    // Alert to show the saved data
-    Alert.alert(
-      "Availability Saved",
-      `Unavailable times have been saved to ${fileName}`,
-      [{ text: "OK" }]
-    );
-  } catch (error) {
-    console.error("Error saving availability:", error);
-    Alert.alert(
-      "Error",
-      "There was an error saving your availability. Please try again.",
-      [{ text: "OK" }]
-    );
-  }
-
-  
-};
-
-
-const shareUnavailabilityFile = async (filePath, fileName) => {
-  try {
-    const shareResult = await FileSystem.getContentUriAsync(filePath);
-    
-    // Use the Sharing API to let the user share or open the file
-    // To use this, you'll need to add: import * as Sharing from 'expo-sharing';
-    // For now, we'll just log the URI
-    console.log("File can be accessed at:", shareResult);
-    
-    
-    if (await Sharing.isAvailableAsync()) {
-       await Sharing.shareAsync(shareResult, {
-       mimeType: 'application/json',
-         dialogTitle: 'Share your unavailable times',
-         UTI: 'public.json'
-       });
-     }
-  } catch (error) {
-    console.error("Error sharing file:", error);
-  }
-};
-
-*/
-  
   return (
     <ScreenContainer
       hasSafeArea={false}
@@ -782,7 +680,6 @@ const shareUnavailabilityFile = async (filePath, fileName) => {
               />
             </Touchable>
           </View>
-          
           {/* Weekly Availability Grid Section */}
           <View style={StyleSheet.applyWidth({ marginBottom: 50 }, dimensions.width)}>
             {/* Availability Grid */}
@@ -1042,12 +939,11 @@ const shareUnavailabilityFile = async (filePath, fileName) => {
             {/* Submit Button */}
             <Button
   onPress={async () => {
-    const success = await handleSaveAvailability();
+    const success = await handleSaveAvailability(false); // Pass false to indicate no sharing
     if (success) {
       Alert.alert(
-        "Availability Saved"
-        //"Your availability has been saved and can be shared from the contacts screen.",
-        //[{ text: "OK" }]
+        "Availability Saved",
+        "Your availability has been saved successfully."
       );
     } else {
       Alert.alert(
@@ -1075,5 +971,4 @@ const shareUnavailabilityFile = async (filePath, fileName) => {
     </ScreenContainer>
   );
 };
-
 export default withTheme(Phase1Screen2Screen);
