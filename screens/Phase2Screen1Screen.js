@@ -178,6 +178,24 @@ const Phase2Screen1Screen = props => {
     const hourIndex = Math.floor(slotIndex / 2);
     return hourLabels[hourIndex];
   };
+
+  const handleSaveButtonClick = async () => {
+  try {
+    await handleSaveAvailability();
+    Alert.alert(
+      "Availability Sent",
+      "Your availability has been saved and sent to the Host.",
+      [{ text: "OK" }]
+    );
+  } catch (error) {
+    console.error("Error sending availability:", error);
+    Alert.alert(
+      "Error",
+      "There was an error sending your availability. Please try again.",
+      [{ text: "OK" }]
+    );
+  }
+};
   
   // Determine if a slot is first of its hour (for labels)
   const isFirstSlotOfHour = (slotIndex) => {
@@ -292,22 +310,6 @@ const Phase2Screen1Screen = props => {
               Available Dates: {getDateRangeString()}
             </Text>
           </View>
-
-          {/* Clear Availability Button */}
-          <Button
-            onPress={clearAvailability}
-            style={StyleSheet.applyWidth(
-              {
-                backgroundColor: 'rgb(211, 39, 148)',
-                marginTop: 20,
-                marginHorizontal: 140,
-                borderRadius: 10,
-                padding: 8
-              },
-              dimensions.width
-            )}
-            title="Clear"
-          />
          
           {/* Calendar Import Icons */}
           <View
@@ -375,7 +377,7 @@ const Phase2Screen1Screen = props => {
             {/* Instructions for Guest */}
             <View style={{
               marginHorizontal: 20,
-              marginBottom: 20,
+              marginBottom: 15,
               backgroundColor: '#e8f4f8',
               padding: 15,
               borderRadius: 10,
@@ -389,6 +391,23 @@ const Phase2Screen1Screen = props => {
                 Select time slots when you are available to meet. Gray slots indicate times when the host is not available.
               </Text>
             </View>
+
+        {/* Clear Availability Button */}
+          <Button
+            onPress={clearAvailability}
+            style={StyleSheet.applyWidth(
+              {
+                backgroundColor: 'rgb(211, 39, 148)',
+                marginTop: 5,
+                marginHorizontal: 140,
+                borderRadius: 10,
+                padding: 8,
+                marginBottom: 20,
+              },
+              dimensions.width
+            )}
+            title="Clear"
+          />
             
             {/* Availability Grid */}
             {selectedDates.length > 0 ? (
@@ -580,35 +599,22 @@ const Phase2Screen1Screen = props => {
               </View>
             )}
             
-            {/* Submit Button */}
-            <Button
-              onPress={async () => {
-                const success = await handleSaveAvailability(true); 
-                if (success) {
-                  Alert.alert(
-                    "Availability Saved",
-                    "Your availability has been saved successfully."
-                  );
-                } else {
-                  Alert.alert(
-                    "Error",
-                    "There was an error saving your availability. Please try again.",
-                    [{ text: "OK" }]
-                  );
-                }
-              }}
-              style={StyleSheet.applyWidth(
-                {
-                  backgroundColor: 'rgb(211, 39, 148)',
-                  marginTop: 30,
-                  marginHorizontal: 50,
-                  borderRadius: 10,
-                  padding: 12
-                },
-                dimensions.width
-              )}
-              title="Save Availability"
-            />
+
+{/* Submit Button */}
+<Button
+  onPress={handleSaveButtonClick}
+  style={StyleSheet.applyWidth(
+    {
+      backgroundColor: 'rgb(211, 39, 148)',
+      marginTop: 30,
+      marginHorizontal: 50,
+      borderRadius: 10,
+      padding: 12
+    },
+    dimensions.width
+  )}
+  title="Save Availability"
+/>
           </View>
         </View>
       </ScrollView>

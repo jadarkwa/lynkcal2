@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import unavailableTimesData from '../unavailable_times.json';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 // Create context
 const AvailabilityContext = createContext({});
@@ -317,21 +319,131 @@ export const AvailabilityProvider = ({ children }) => {
     setAvailability({});
   };
 
-  // Save guest availability
-  const handleSaveAvailability = async (isGuest = false) => {
-    try {
-      // Here you would normally save to a server
-      console.log("Saving availability:", {
-        availability,
-        isGuest
+  // Prepare data for saving - returns formatted data
+  const prepareAvailabilityData = () => {
+    const guestAvailability = {};
+// Group selected slots by date
+selectedDates.forEach((date, dayIndex) => {
+  const dateString = formatDateString(date);
+  const availableRanges = [];
+  
+  // Find continuous blocks of selected time slots
+  let currentRange = null;
+  const durationSlots = getDurationInSlots();
+  
+  for (let timeIndex = 0; timeIndex < timeOptions.length; timeIndex++) {
+    const isSelected = isSlotSelected(dayIndex, timeIndex);
+    
+    if (isSelected) {
+      // If no current range, start a new one
+      if (!currentRange) {
+        currentRange = {
+          startTimeIndex: timeIndex,
+          endTimeIndex: timeIndex
+        };
+      } else {
+        // Extend the current range
+        currentRange.endTimeIndex = timeIndex;
+      }
+    } else if (currentRange) {
+      // End of a contiguous block, calculate the actual end time
+      // We need to account for the duration to show the ending time
+      const actualEndTimeIndex = Math.min(
+        currentRange.endTimeIndex + durationSlots - 1, 
+        timeOptions.length - 1
+      );
+      
+      availableRanges.push({
+        start: timeOptions[currentRange.startTimeIndex],
+        end: timeOptions[actualEndTimeIndex]
       });
+      currentRange = null;
+    }
+  }
+  
+  // Add the last range if it exists
+  if (currentRange) {
+    const actualEndTimeIndex = Math.min(
+      currentRange.endTimeIndex + durationSlots - 1, 
+      timeOptions.length - 1
+    );
+    
+    availableRanges.push({
+      start: timeOptions[currentRange.startTimeIndex],
+      end: timeOptions[actualEndTimeIndex]
+    });
+  }
+  
+  // Format the time ranges into strings "start - end"
+  const formattedRanges = availableRanges.map(range => {
+    return `${range.start} - ${range.end}`;
+  });
+  
+  // Only add days with available times
+  if (formattedRanges.length > 0) {
+    guestAvailability[dateString] = formattedRanges;
+  }
+});
+
+// Create the data structure to save
+const dataToSave = {
+  availableTimes: guestAvailability
+};
+
+return dataToSave;
+
+  };
+
+
+  // Handle saving guest availability with proper file system operations
+  const handleSaveAvailability = async () => {
+    try {
+      // Prepare data
+      const dataToSave = prepareAvailabilityData();
+      
+      if (!dataToSave) {
+        throw new Error("Failed to prepare availability data");
+      }
+      
+      // Convert to JSON string
+      const jsonData = JSON.stringify(dataToSave, null, 2);
+      
+      // Define the file path
+      const fileName = 'guest_availability.json';
+      const filePath = FileSystem.documentDirectory + fileName;
+      
+      // Write the JSON data to the file
+      await FileSystem.writeAsStringAsync(filePath, jsonData);
+      
+
+      await shareAvailabilityFile(filePath, fileName);
+
       
       return true;
     } catch (error) {
       console.error("Error saving availability:", error);
       return false;
     }
+
   };
+
+  // Helper function to share the availability file
+  const shareAvailabilityFile = async (filePath, fileName) => {
+    try {
+      const shareResult = await FileSystem.getContentUriAsync(filePath);
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(shareResult, {
+          mimeType: 'application/json',
+          dialogTitle: 'Share your unavailable times',
+          UTI: 'public.json'
+        });
+      }
+    } catch (error) {
+      console.error("Error sharing file:", error);
+    }
+  };
+
 
   return (
     <AvailabilityContext.Provider
@@ -348,6 +460,8 @@ export const AvailabilityProvider = ({ children }) => {
         headerInfo,
         isLoading,
         handleSaveAvailability,
+        shareAvailabilityFile,
+        prepareAvailabilityData,
         isSlotSelected,
         toggleAvailability,
         clearAvailability,
