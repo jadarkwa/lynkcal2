@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import unavailableTimesData from '../unavailable_times.json';
+import unavailableTimesData from '../test.json';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
@@ -387,6 +387,13 @@ selectedDates.forEach((date, dayIndex) => {
 
 // Create the data structure to save
 const dataToSave = {
+  headerInfo: {
+    ...headerInfo,
+    startTime: timeSettings.startTime,
+    endTime: timeSettings.endTime,
+    durationPeriod: timeSettings.duration,
+    guestName: headerInfo.guestName || "Guest"
+  },
   availableTimes: guestAvailability
 };
 
