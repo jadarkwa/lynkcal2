@@ -1,139 +1,336 @@
-import React, { createContext, useState, useContext } from 'react';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import unavailableTimesData from '../unavailable_times.json';
 
-// Create the context
-const AvailabilityContext = createContext();
+// Create context
+const AvailabilityContext = createContext({});
 
-// Define time options here as they're used in the context
-const timeOptions = [
-  "12:00 AM", "12:30 AM", "1:00 AM", "1:30 AM", "2:00 AM", "2:30 AM", "3:00 AM", "3:30 AM", 
-  "4:00 AM", "4:30 AM", "5:00 AM", "5:30 AM", "6:00 AM", "6:30 AM", "7:00 AM", "7:30 AM", 
-  "8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", 
-  "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", 
-  "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", 
-  "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM"
-];
-
-// Provider component
 export const AvailabilityProvider = ({ children }) => {
-  // State for storing availability data
+  // State variables
   const [availability, setAvailability] = useState({});
   const [selectedDates, setSelectedDates] = useState([]);
   const [timeSettings, setTimeSettings] = useState({
     startTime: '',
     endTime: '',
-    selectedDuration: ''
+    duration: ''
   });
+  const [timeOptions, setTimeOptions] = useState([]);
+  const [headerInfo, setHeaderInfo] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Update time settings function
-  const updateAvailabilitySettings = (startTime, endTime, duration) => {
-    setTimeSettings({
-      startTime,
-      endTime,
-      selectedDuration: duration
-    });
+  // Load data on component mount
+  useEffect(() => {
+    loadAvailabilityData();
+  }, []);
+
+  // Update timeOptions when timeSettings change
+  useEffect(() => {
+    if (timeSettings.startTime && timeSettings.endTime) {
+      setTimeOptions(generateTimeOptions());
+    }
+  }, [timeSettings]);
+
+  // Load and process the JSON data
+  const loadAvailabilityData = () => {
+    try {
+      setIsLoading(true);
+      
+      // Extract header information
+      const headerInfo = unavailableTimesData.headerInfo || {};
+      setHeaderInfo(headerInfo);
+      
+      // Set time settings
+      setTimeSettings({
+        startTime: headerInfo.startTime || '9:00 AM',
+        endTime: headerInfo.endTime || '5:00 PM',
+        duration: headerInfo.durationPeriod || '1 HR'
+      });
+      
+      // Process dates from the unavailableTimes object
+      const unavailableTimes = unavailableTimesData.unavailableTimes || {};
+      const dates = Object.keys(unavailableTimes);
+      
+      // Convert string dates to Date objects
+      const parsedDates = dates.map(dateStr => new Date(dateStr));
+      setSelectedDates(parsedDates);
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error loading availability data:", error);
+      setIsLoading(false);
+    }
   };
 
-  // Get unavailable times within the selected time range
-  const getUnavailableTimes = () => {
-    const unavailableTimes = {};
+  // Generate time options based on host's settings
+  const generateTimeOptions = () => {
+    const timeOptions = [];
     
-    // Get time slot indices for filtering
-    const startIndex = timeSettings.startTime ? timeOptions.indexOf(timeSettings.startTime) : 0;
-    const endIndex = timeSettings.endTime ? timeOptions.indexOf(timeSettings.endTime) : timeOptions.length - 1;
+    // If no time settings loaded yet, return empty array
+    if (!timeSettings.startTime || !timeSettings.endTime) {
+      return [];
+    }
     
-    selectedDates.forEach((date, dayIndex) => {
-      const dateString = formatDateString(date);
-      const dayUnavailableTimes = [];
+    // Helper function to convert time string to minutes
+    const timeToMinutes = (timeStr) => {
+      const [time, period] = timeStr.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
       
-      // Only iterate through the time slots in the range
-      for (let slotIndex = startIndex; slotIndex <= endIndex; slotIndex++) {
-        if (!isSlotSelected(dayIndex, slotIndex)) {
-          // This slot is unavailable - add it to the list
-          const timeString = timeOptions[slotIndex];
-          dayUnavailableTimes.push(timeString);
+      if (period === 'PM' && hours < 12) {
+        hours += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      
+      return hours * 60 + minutes;
+    };
+    
+    // Helper function to convert minutes to time string
+    const minutesToTime = (minutes) => {
+      let hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      const period = hours >= 12 ? 'PM' : 'AM';
+      
+      if (hours > 12) {
+        hours -= 12;
+      } else if (hours === 0) {
+        hours = 12;
+      }
+      
+      return `${hours}:${mins.toString().padStart(2, '0')} ${period}`;
+    };
+    
+    // Convert start and end times to minutes
+    const startMinutes = timeToMinutes(timeSettings.startTime);
+    const endMinutes = timeToMinutes(timeSettings.endTime);
+    
+    // Generate time options in 30-minute intervals
+    for (let mins = startMinutes; mins <= endMinutes; mins += 30) {
+      timeOptions.push(minutesToTime(mins));
+    }
+    
+    return timeOptions;
+  };
+
+  // Get duration in number of 30-minute slots
+  const getDurationInSlots = () => {
+    switch (timeSettings.duration) {
+      case "30 MINS": return 1;
+      case "1 HR": return 2;
+      case "2 HRS": return 4;
+      case "3 HRS": return 6;
+      default: return 2; // Default to 1 HR (2 slots)
+    }
+  };
+
+  // Format date string (YYYY-MM-DD)
+  const formatDateString = (date) => {
+    return date.toISOString().split('T')[0];
+  };
+
+  // Check if a time slot is unavailable
+  const isTimeSlotUnavailable = (date, timeSlot) => {
+    if (!date) return true;
+    
+    const dateString = formatDateString(date);
+    const unavailableTimes = unavailableTimesData.unavailableTimes || {};
+    
+    // Check if this date has unavailable times
+    if (unavailableTimes[dateString]) {
+      // Check if this specific time slot is in the unavailable list
+      return unavailableTimes[dateString].includes(timeSlot);
+    }
+    
+    return false;
+  };
+
+  // Get all unavailable times for a specific date
+  const getUnavailableTimes = (date) => {
+    if (!date) return [];
+    
+    const dateString = formatDateString(date);
+    const unavailableTimes = unavailableTimesData.unavailableTimes || {};
+    
+    return unavailableTimes[dateString] || [];
+  };
+
+  // Get all available time blocks for a specific date
+  const getAvailableTimeBlocks = (date) => {
+    if (!date || !timeOptions.length) return [];
+    
+    const blocks = [];
+    let currentBlock = [];
+    
+    timeOptions.forEach((timeSlot, index) => {
+      if (!isTimeSlotUnavailable(date, timeSlot)) {
+        // Add to current block
+        currentBlock.push(index);
+      } else if (currentBlock.length > 0) {
+        // End of a block, add it to blocks array
+        blocks.push([...currentBlock]);
+        currentBlock = [];
+      }
+    });
+    
+    // Add the last block if it exists
+    if (currentBlock.length > 0) {
+      blocks.push(currentBlock);
+    }
+    
+    return blocks;
+  };
+  
+  // Find the block that contains a specific timeIndex
+  const findContainingBlock = (date, timeIndex) => {
+    const blocks = getAvailableTimeBlocks(date);
+    return blocks.find(block => block.includes(timeIndex)) || [];
+  };
+
+  // Check if a slot is selected by the guest
+  const isSlotSelected = (dayIndex, timeIndex) => {
+    return availability[`${dayIndex}-${timeIndex}`] === true;
+  };
+
+  // Find which available block a timeIndex belongs to and determine optimal selection
+  const findOptimalSelectionBlock = (dayIndex, timeIndex) => {
+    const date = selectedDates[dayIndex];
+    const durationSlots = getDurationInSlots();
+    
+    // Get the available block that contains this timeIndex
+    const containingBlock = findContainingBlock(date, timeIndex);
+    
+    if (!containingBlock.length) {
+      return null;
+    }
+    
+    // If the block is smaller than our duration, we can't select it
+    if (containingBlock.length < durationSlots) {
+      return null;
+    }
+    
+    // Find where in the block our timeIndex is
+    const indexPosition = containingBlock.indexOf(timeIndex);
+    
+    // Calculate potential start indices within this block
+    const potentialStartIndices = [];
+    
+    // Check if we can form a block starting before the selected index
+    for (let i = Math.max(0, indexPosition - durationSlots + 1); i <= indexPosition; i++) {
+      // Check if a full duration can fit starting at i
+      if (i + durationSlots - 1 < containingBlock.length) {
+        potentialStartIndices.push(containingBlock[i]);
+      }
+    }
+    
+    if (potentialStartIndices.length === 0) {
+      return null;
+    }
+    
+    // Choose the most appropriate start index
+    // If the exact timeIndex can be a start, use it
+    if (potentialStartIndices.includes(timeIndex)) {
+      const startIndex = timeIndex;
+      return {
+        startIndex,
+        indices: Array.from({ length: durationSlots }, (_, i) => startIndex + i)
+      };
+    }
+    
+    // Otherwise, find the closest valid start index
+    const closestStartIndex = potentialStartIndices.reduce((prev, curr) => 
+      Math.abs(curr - timeIndex) < Math.abs(prev - timeIndex) ? curr : prev
+    );
+    
+    return {
+      startIndex: closestStartIndex,
+      indices: Array.from({ length: durationSlots }, (_, i) => closestStartIndex + i)
+    };
+  };
+
+  // Toggle guest availability
+  const toggleAvailability = (dayIndex, timeIndex) => {
+    // Get the date for this slot
+    const date = selectedDates[dayIndex];
+    const timeSlot = timeOptions[timeIndex];
+    
+    // Check if this time slot is unavailable (set by host)
+    if (isTimeSlotUnavailable(date, timeSlot)) {
+      return false;
+    }
+    
+    const updatedAvailability = { ...availability };
+    
+    // Is the clicked slot currently selected?
+    const isCurrentlySelected = isSlotSelected(dayIndex, timeIndex);
+    
+    if (isCurrentlySelected) {
+      // First, determine if this is part of a larger block
+      // We need to find all consecutive selected slots
+      let startIndex = timeIndex;
+      while (startIndex > 0 && isSlotSelected(dayIndex, startIndex - 1)) {
+        startIndex--;
+      }
+      
+      let endIndex = timeIndex;
+      while (endIndex < timeOptions.length - 1 && isSlotSelected(dayIndex, endIndex + 1)) {
+        endIndex++;
+      }
+      
+      const durationSlots = getDurationInSlots();
+      
+      // If the selected range is exactly our duration, unselect it all
+      if (endIndex - startIndex + 1 === durationSlots) {
+        for (let i = startIndex; i <= endIndex; i++) {
+          updatedAvailability[`${dayIndex}-${i}`] = false;
+        }
+      } else {
+        // Find which duration-sized block this slot belongs to
+        // This is more complex - we need to find aligned duration blocks
+        
+        // Check which exact duration block contains this timeIndex
+        const blockStart = startIndex + Math.floor((timeIndex - startIndex) / durationSlots) * durationSlots;
+        const blockEnd = Math.min(blockStart + durationSlots - 1, endIndex);
+        
+        // Unselect just this duration block
+        for (let i = blockStart; i <= blockEnd; i++) {
+          updatedAvailability[`${dayIndex}-${i}`] = false;
         }
       }
+    } else {
+      // Find optimal selection block for this timeIndex
+      const optimalBlock = findOptimalSelectionBlock(dayIndex, timeIndex);
       
-      // Only add days that have unavailable times
-      if (dayUnavailableTimes.length > 0) {
-        unavailableTimes[dateString] = dayUnavailableTimes;
+      if (!optimalBlock) {
+        return false;
       }
-    });
+      
+      // Select all slots in the optimal block
+      optimalBlock.indices.forEach(index => {
+        updatedAvailability[`${dayIndex}-${index}`] = true;
+      });
+    }
     
-    return unavailableTimes;
+    setAvailability(updatedAvailability);
+    return true;
   };
 
-  // Save availability data to a file and share it optionally
-  const handleSaveAvailability = async (shouldShare = true) => {
+  // Clear all selected availability slots
+  const clearAvailability = () => {
+    setAvailability({});
+  };
+
+  // Save guest availability
+  const handleSaveAvailability = async (isGuest = false) => {
     try {
-      const unavailableTimes = getUnavailableTimes();
-      
-      // Create header information with time range and duration
-      const headerInfo = {
-        startTime: timeSettings.startTime || '',
-        endTime: timeSettings.endTime || '',
-        durationPeriod: timeSettings.selectedDuration || ''
-      };
-      
-      // Combine header and unavailable times
-      const dataToSave = {
-        headerInfo: headerInfo,
-        unavailableTimes: unavailableTimes
-      };
-      
-      // Convert to JSON string for export
-      const jsonData = JSON.stringify(dataToSave, null, 2);
-      
-      // Define the file path
-      const fileName = 'unavailable_times.json';
-      const filePath = FileSystem.documentDirectory + fileName;
-      
-      // Write the JSON data to the file
-      await FileSystem.writeAsStringAsync(filePath, jsonData);
-      
-      // Share the file with the user if requested
-      if (shouldShare) {
-        await shareUnavailabilityFile(filePath, fileName);
-      }
+      // Here you would normally save to a server
+      console.log("Saving availability:", {
+        availability,
+        isGuest
+      });
       
       return true;
     } catch (error) {
       console.error("Error saving availability:", error);
       return false;
     }
-  };
-
-  // Helper function to share the availability file
-  const shareUnavailabilityFile = async (filePath, fileName) => {
-    try {
-      const shareResult = await FileSystem.getContentUriAsync(filePath);
-      
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(shareResult, {
-          mimeType: 'application/json',
-          dialogTitle: 'Share your unavailable times',
-          UTI: 'public.json'
-        });
-      }
-    } catch (error) {
-      console.error("Error sharing file:", error);
-    }
-  };
-
-  // Helper function to format date string
-  const formatDateString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Helper function to check if a slot is selected
-  const isSlotSelected = (dayIndex, slotIndex) => {
-    const key = `${dayIndex}-${slotIndex}`;
-    return availability[key] === true;
   };
 
   return (
@@ -144,10 +341,17 @@ export const AvailabilityProvider = ({ children }) => {
         selectedDates,
         setSelectedDates,
         timeSettings,
-        updateAvailabilitySettings,
+        timeOptions,
+        isTimeSlotUnavailable,
         getUnavailableTimes,
+        getAvailableTimeBlocks,
+        headerInfo,
+        isLoading,
         handleSaveAvailability,
-        isSlotSelected
+        isSlotSelected,
+        toggleAvailability,
+        clearAvailability,
+        formatDateString
       }}
     >
       {children}
@@ -155,11 +359,5 @@ export const AvailabilityProvider = ({ children }) => {
   );
 };
 
-// Custom hook for using the context
-export const useAvailabilityContext = () => {
-  const context = useContext(AvailabilityContext);
-  if (!context) {
-    throw new Error('useAvailabilityContext must be used within an AvailabilityProvider');
-  }
-  return context;
-};
+// Create a hook for using the context
+export const useAvailabilityContext = () => useContext(AvailabilityContext);
