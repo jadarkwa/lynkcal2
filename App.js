@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import {
   SafeAreaFrameContext,
-  SafeAreaProvider,
+  SafeAreaProvider, 
   initialWindowMetrics,
 } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from 'react-query';

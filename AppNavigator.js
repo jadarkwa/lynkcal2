@@ -8,11 +8,7 @@ import { I18nManager, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { systemWeights } from 'react-native-typography';
 import LinkingConfiguration from './LinkingConfiguration';
-import Phase1Screen1Screen from './screens/Phase1Screen1Screen';
-import Phase1Screen2Screen from './screens/Phase1Screen2Screen';
 import Phase2Screen1Screen from './screens/Phase2Screen1Screen';
-import Phase3Screen1Screen from './screens/Phase3Screen1Screen';
-import Phase3Screen2Screen from './screens/Phase3Screen2Screen';
 import palettes from './themes/palettes';
 import Breakpoints from './utils/Breakpoints';
 import useWindowDimensions from './utils/useWindowDimensions';
@@ -78,38 +74,10 @@ export default function RootAppNavigator() {
         })}
       >
         <Stack.Screen
-          name="Phase1Screen1Screen"
-          component={Phase1Screen1Screen}
-          options={({ navigation }) => ({
-            title: 'Phase 1 - Screen 1',
-          })}
-        />
-        <Stack.Screen
-          name="Phase1Screen2Screen"
-          component={Phase1Screen2Screen}
-          options={({ navigation }) => ({
-            title: 'Phase 1 - Screen 2',
-          })}
-        />
-        <Stack.Screen
           name="Phase2Screen1Screen"
           component={Phase2Screen1Screen}
           options={({ navigation }) => ({
             title: 'Phase 2 - Screen 1',
-          })}
-        />
-        <Stack.Screen
-          name="Phase3Screen1Screen"
-          component={Phase3Screen1Screen}
-          options={({ navigation }) => ({
-            title: 'Phase 3 - Screen 1',
-          })}
-        />
-        <Stack.Screen
-          name="Phase3Screen2Screen"
-          component={Phase3Screen2Screen}
-          options={({ navigation }) => ({
-            title: 'Phase 3 - Screen 2',
           })}
         />
       </Stack.Navigator>
